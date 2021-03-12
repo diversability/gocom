@@ -26,11 +26,33 @@ func InitGinAuth(key string) error {
 	return nil
 }
 
+func isDebugLog() bool {
+	if log.GLog != nil {
+		if log.GLog.LogLevel == log.LogLevelDebug {
+			return true
+		}
+	}
+
+	if log.GSizeLog != nil {
+		if log.GSizeLog.LogLevel == log.LogLevelDebug {
+			return true
+		}
+	}
+
+	if log.GDailyLog != nil {
+		if log.GDailyLog.LogLevel == log.LogLevelDebug {
+			return true
+		}
+	}
+
+	return false
+}
+
 func GinLogger(threshold time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		trace_id.SaveTraceId(c.GetHeader(trace_id.TraceIDName))
 
-		if log.GSizeLog.LogLevel == log.LogLevelDebug {
+		if isDebugLog() {
 			if c.Request.Method == http.MethodGet {
 				log.DebugF("[GIN DEBUG] %s %s URL: %s Header: %+v", c.Request.Method, c.Request.Proto,
 					c.Request.URL.String(), c.Request.Header)
