@@ -100,7 +100,7 @@ func (cLog *ComLog) rotate() {
 		cLog.LogCurSize = 0
 	}
 
-	if cLog.LogCurSize >= cLog.LogMaxSize {
+	if cLog.LogCurSize > cLog.LogMaxSize {
 		err := cLog.PFile.Close()
 		if err != nil {
 			fmt.Printf("close log file err: %s\n", err.Error())
