@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type SizeLog struct {
 	FileFullName string
 	PFile        *os.File
 	Log          *log.Logger
+	M              sync.Mutex
 }
 
 func InitSizeLog(logDir string, logFile string, logStrLevel string, LogMaxSize int) (*SizeLog, error) {
@@ -72,6 +74,13 @@ func InitSizeLog(logDir string, logFile string, logStrLevel string, LogMaxSize i
 
 func (slog *SizeLog) rotate() {
 	if slog.LogCurSize >= slog.LogMaxSize {
+		slog.M.Lock()
+		defer slog.M.Unlock()
+
+		if slog.LogCurSize == 0 {
+			return
+		}
+
 		err := slog.PFile.Close()
 		if err != nil {
 			fmt.Printf("close log file err: %s\n", err.Error())

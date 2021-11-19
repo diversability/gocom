@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type ComLog struct {
 	FileFullName   string
 	PFile          *os.File
 	Log            *log.Logger
+	M              sync.Mutex
 }
 
 func InitLog(logDir string, logFile string, logStrLevel string, LogMaxSize int) (*ComLog, error) {
@@ -77,7 +79,14 @@ func InitLog(logDir string, logFile string, logStrLevel string, LogMaxSize int) 
 
 func (cLog *ComLog) rotate() {
 	now := time.Now()
-	if now.Year() != cLog.LastRotateTime.Year() || now.Month() != cLog.LastRotateTime.Month()  || now.Day() != cLog.LastRotateTime.Day() {
+	if now.Year() != cLog.LastRotateTime.Year() || now.Month() != cLog.LastRotateTime.Month() || now.Day() != cLog.LastRotateTime.Day() {
+		cLog.M.Lock()
+		defer cLog.M.Unlock()
+
+		if now.Equal(cLog.LastRotateTime) {
+			return
+		}
+
 		err := cLog.PFile.Close()
 		if err != nil {
 			fmt.Printf("close log file err: %s\n", err.Error())
@@ -97,10 +106,19 @@ func (cLog *ComLog) rotate() {
 		}
 
 		cLog.Log.SetOutput(cLog.PFile)
+		cLog.LastRotateTime = now
 		cLog.LogCurSize = 0
+		return
 	}
 
 	if cLog.LogCurSize > cLog.LogMaxSize {
+		cLog.M.Lock()
+		defer cLog.M.Unlock()
+
+		if cLog.LogCurSize == 0 {
+			return
+		}
+
 		err := cLog.PFile.Close()
 		if err != nil {
 			fmt.Printf("close log file err: %s\n", err.Error())
@@ -231,7 +249,6 @@ func Error(v ...interface{}) {
 func ErrorF(format string, args ...interface{}) {
 	GLog.ErrorF(format, args...)
 }
-
 
 var (
 	green   = string([]byte{27, 91, 57, 55, 59, 52, 50, 109})

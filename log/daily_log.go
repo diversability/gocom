@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type DailyLog struct {
 	FileFullName  string
 	PFile         *os.File
 	Log           *log.Logger
+	M              sync.Mutex
 }
 
 func InitDailyLog(logDir string, logFile string, logStrLevel string) (*DailyLog, error) {
@@ -71,6 +73,13 @@ func InitDailyLog(logDir string, logFile string, logStrLevel string) (*DailyLog,
 func (dLog *DailyLog) rotate() {
 	now := time.Now()
 	if now.Year() != dLog.LastCheckTime.Year() || now.Month() != dLog.LastCheckTime.Month()  || now.Day() != dLog.LastCheckTime.Day() {
+		dLog.M.Lock()
+		defer dLog.M.Unlock()
+
+		if now.Equal(dLog.LastCheckTime) {
+			return
+		}
+
 		err := dLog.PFile.Close()
 		if err != nil {
 			fmt.Printf("close log file err: %s\n", err.Error())
@@ -90,6 +99,7 @@ func (dLog *DailyLog) rotate() {
 		}
 
 		dLog.Log.SetOutput(dLog.PFile)
+		dLog.LastCheckTime = now
 		dLog.LogCurSize = 0
 	}
 }
